@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<title>六为</title>
+	</head>
+	<link rel='stylesheet' href="node_modules/bootstrap/dist/css/bootstrap.css" />
+	<style>
+		input::-webkit-outer-spin-button,
+		input::-webkit-inner-spin-button {
+			-webkit-appearance: none !important;
+			margin: 0;
+		}
+		
+		.bounce-enter-active {
+			transition: all .3s ease;
+		}
+		
+		.bounce-leave-active {
+			transition: all .3s cubic-bezier(1.0, 0.5, 0.8, 1.0);
+		}
+		
+		.bounce-enter,
+		.bounce-leave-to {
+			transform: translateX(10px);
+			opacity: 0;
+		}
+	</style>
+
+	<body>
+		<div id='app'>
+			<nav class="navbar navbar-default">
+				<div class="container-fluid">
+					<div class="navbar-header">
+						<a class="navbar-brand">六为事业部 </a>
+						<div class="btn-group" role="group" style="margin-top: 7px;">
+							<button type="button" class="btn btn-default" @click="goHome">首页</button>
+							<button type="button" class="btn btn-default" @click="goCarts">订货清单 <span class="badge">{{products.length}}</span></button>
+						</div>
+						</ul>
+					</div>
+				</div>
+			</nav>
+			<transition name="bounce" mode="out-in">
+				<div class="container" v-show="active1">
+					<div class="row">
+						<div class="col-sm-4 col-md-3" v-for="(product,index) in allProducts" :value="index">
+							<div class="thumbnail">
+								<div class="caption">
+									<img :src="product.productImg" :title="product.productName" width="80px">
+									<h5>{{product.productName}}</h5>
+									<p>{{product.productInfo}}</p>
+									<p>单价：{{product.productPrice}}</p>
+									<p>
+										<a href="#" class="btn btn-primary" role="button" @click="addItem(index)">添加</a>
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</transition>
+			<transition name="bounce" mode="out-in">
+				<div class="container" v-show="active2">
+					<div class="row">
+						<table class='table table-hover table-bordered'>
+							<caption class="h2 text-warning">订货清单 </caption>
+							<tr>
+								<th>全选<input type="checkbox" v-model="checkAll"></th>
+								<td>商品</td>
+								<td>单价</td>
+								<td>数量（件）</td>
+								<td>小计</td>
+								<td>操作</td>
+							</tr>
+							<tr v-for="(product,index) in products">
+								<td><input type="checkbox" v-model="product.isSelect"></td>
+								<td><img :src="product.productImg" :title="product.productName" width="80px">{{product.productName}}/{{product.productInfo}}</td>
+								<td>{{product.productPrice|toFixed(2,"￥")}}</td>
+								<td><button class="btn btn-sm" style="margin-top: -4px;" @click="reCount(product)">-</button>
+									<input type="number" v-model.number="product.productCount" min="1" max="99">
+									<button class="btn btn-sm" style="margin-top: -4px;" @click="addCount(product)">+</button></td>
+								<td>{{product.productPrice*product.productCount*product.productCInfo|toFixed(2,"￥")}}</td>
+								<td><button class="btn btn-danger" @click="remove(product)">删除</button></td>
+							</tr>
+							<tr>
+								<td colspan="6" class="h4">总价格：{{sum|toFixed(2,"￥")}}</td>
+							</tr>
+						</table>
+					</div>
+				</div>
+			</transition>
+		</div>
+	</body>
+	<script src="node_modules/vue/dist/vue.js"></script>
+	<script src="node_modules/vue-router/dist/vue-router.js"></script>
+	<script src="node_modules/axios/dist/axios.js"></script>
+	<script>
+		let home = {
+			template: "<div>home</div>"
+		};
+		let carts = {
+			template: `<div>carts</div>`
+		};
+		let routes = [{
+				path: '/home',
+				component: home
+			},
+			{
+				path: '/carts',
+				component: carts
+			}
+		];
+		let router = new VueRouter({
+			routes,
+			linkActiveClass: 'ractive'
+		});
+		let vm = new Vue({
+			el: '#app',
+			router,
+			computed: {
+				checkAll: {
+					get() {
+						return this.products.every(p => p.isSelect);
+					},
+					set(val) {
+						this.products.forEach(p => p.isSelect = val)
+					}
+				},
+				sum() {
+					return this.products.reduce((prev, next) => {
+						if(!next.isSelect) return prev;
+						return prev + next.productPrice * next.productCount * next.productCInfo;
+					}, 0)
+				},
+			},
+			filters: {
+				toFixed(input, param1, param2) {
+					return param2 + input.toFixed(param1)
+				}
+			},
+			created() {
+				this.getData();
+			},
+			methods: {
+				goHome() {
+					if(this.active1 !== true) {
+						this.active2 = false;
+						setTimeout(p => this.active1 = true, 400);
+					}
+				},
+				goCarts() {
+					if(this.active2 !== true) {
+						this.active1 = false;
+						setTimeout(p => this.active2 = true, 400);
+					}
+				},
+				addItem(p) {
+					if(!this.products.includes(this.allProducts[p])) {
+						this.products.push(this.allProducts[p])
+					} else {
+						alert("该药品已在清单内，请勿重复添加。")
+					};
+				},
+				addCount(p) {
+					p.productCount += 1
+				},
+				reCount(p) {
+					if(p.productCount !== 1) {
+						p.productCount -= 1
+					} else {
+						alert('如需删除请点击右侧删除按钮。')
+					}
+				},
+				remove(p) {
+					this.products = this.products.filter(item => item !== p)
+				},
+				//				getData() {
+				//					axios.get('./carts.json').then(res => {
+				//						this.allProducts = res.data;
+				//					}, err => {
+				//						console.log(err);
+				//					})
+				//				}
+			},
+			data: {
+				products: [],
+				allProducts: [{
+						isSelect: true,
+						productName: "六味地黄胶囊",
+						productImg: "http://www.xiuzheng.com/d/file/jtcp/gdsl/2017-08-14/dea051153abeceb26114c8e16b0b21b9.jpg",
+						productInfo: "0.3g*12粒*3板*300盒",
+						productCInfo: 300,
+						productPrice: 9,
+						productCount: 1
+					},
+					{
+						isSelect: true,
+						productName: "五加参归芪精",
+						productImg: "http://www.xiuzheng.com/d/file/jtcp/byasl/2017-08-14/44f74b9cf3d82740ff3a165baf1bec1d.jpg",
+						productInfo: "100ml*100盒",
+						productCInfo: 100,
+						productPrice: 8,
+						productCount: 1
+					},
+					{
+						isSelect: true,
+						productName: "益气养血口服液(易折瓶)",
+						productImg: "http://www.xiuzheng.com/d/file/jtcp/byasl/2017-08-14/73acb7801a7d3d276188cfa5457d2985.jpg",
+						productInfo: "15ml*12支*40盒",
+						productCInfo: 40,
+						productPrice: 7,
+						productCount: 1
+					},
+					{
+						isSelect: true,
+						productName: "阳春口服液",
+						productImg: "http://www.xiuzheng.com/d/file/jtcp/gdsl/2017-08-14/c5e3f4d295fd275f9fb7a9d70c92ed8c.jpg",
+						productInfo: "10ml*10支*40盒",
+						productCInfo: 40,
+						productPrice: 6,
+						productCount: 1
+					},
+					{
+						isSelect: true,
+						productName: "妇康宝口服液",
+						productImg: "http://www.xiuzheng.com/d/file/jtcp/fkl/2017-08-14/990c77d69e2cda00d3a6b68ddf3e134e.jpg",
+						productInfo: "10ml*10支*48盒",
+						productCInfo: 48,
+						productPrice: 5,
+						productCount: 1
+					},
+				],
+				addThis: "",
+				active1: true,
+				active2: false,
+			}
+		})
+	</script>
+
+</html>
